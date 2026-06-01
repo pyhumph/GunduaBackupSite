@@ -3,6 +3,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      # Build over the HOST network so apt-get uses the host's working resolver
+      # (Docker's bridge DNS is broken on this server). Runtime still uses the
+      # bridge + port mapping below — do NOT host-network the running container
+      # or Apache:80 would collide with Nginx Proxy Manager.
+      network: host
     image: gundua-aio:latest
     container_name: gundua_aio
     restart: unless-stopped
