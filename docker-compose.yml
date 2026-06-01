@@ -7,13 +7,13 @@ services:
       # (Docker's bridge DNS is broken on this server). Runtime still uses the
       # bridge + port mapping below — do NOT host-network the running container
       # or Apache:80 would collide with Nginx Proxy Manager.
-      network: host
     image: gundua-aio:latest
     container_name: gundua_aio
     restart: unless-stopped
-    ports:
-      - "5053:80"      # WordPress  -> proxy this in Nginx Proxy Manager
-      - "5054:5054"    # MariaDB     (5054, NOT 3306, so no Webuzo collision)
+    # Host networking: no bridge subnet is allocated (avoids "address pools fully
+    # subnetted"), and no clash with Webuzo. Apache serves host:5053 directly
+    # (set in the Dockerfile); MariaDB listens on 127.0.0.1:5054 only.
+    network_mode: host
     environment:
       # --- DB bootstrap (used by the entrypoint to create the DB + user) ---
       DB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
@@ -36,7 +36,7 @@ services:
       - ./backup:/backup:ro                             # entrypoint reads /backup/database.sql
     healthcheck:
       # Healthy once Apache serves the login page (DB up + WordPress responding).
-      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1/wp-login.php"]
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:5053/wp-login.php"]
       interval: 30s
       timeout: 10s
       retries: 5
