@@ -6,8 +6,11 @@ RUN set -eux; \
     apt-get install -y --no-install-recommends \
         mariadb-server mariadb-client supervisor curl; \
     rm -rf /var/lib/apt/lists/*; \
+    # apt pre-initializes /var/lib/mysql during build; wipe it so the data volume
+    # starts EMPTY and our entrypoint runs first-boot init + imports database.sql.
+    rm -rf /var/lib/mysql; mkdir -p /var/lib/mysql; \
     mkdir -p /run/mysqld /var/log/supervisor; \
-    chown -R mysql:mysql /run/mysqld
+    chown -R mysql:mysql /run/mysqld /var/lib/mysql
 
 # MariaDB listens on 5054 inside the container (and is published to host 5054),
 # so it never collides with Webuzo's MySQL on 3306.

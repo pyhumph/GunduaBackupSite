@@ -2,11 +2,12 @@
 # Wait for MariaDB (started by supervisord) to accept TCP on 5054, then start WP.
 set -e
 
-echo "[aio] Waiting for MariaDB on 127.0.0.1:5054..."
+echo "[aio] Waiting for MariaDB to accept TCP on 127.0.0.1:5054..."
 for i in $(seq 60 -1 0); do
-  if mariadb-admin --host=127.0.0.1 --port=5054 --protocol=tcp \
-       -u"${DB_USER}" -p"${DB_PASSWORD}" ping &>/dev/null; then
-    echo "[aio] MariaDB is up."
+  # Plain TCP check — no auth needed, so it works regardless of user setup.
+  if (exec 3<>/dev/tcp/127.0.0.1/5054) 2>/dev/null; then
+    exec 3>&- 3<&-
+    echo "[aio] MariaDB port is open."
     break
   fi
   if [ "$i" = 0 ]; then echo "[aio] MariaDB not reachable on 5054 — continuing anyway"; fi
