@@ -1,0 +1,5 @@
+[mysqld]
+# MySQL/MariaDB runs on 5054 (not 3306) to avoid colliding with Webuzo.
+port = 5054
+bind-address = 0.0.0.0
+skip-name-resolve

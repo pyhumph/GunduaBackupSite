@@ -1,0 +1,41 @@
+services:
+  gundua:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: gundua-aio:latest
+    container_name: gundua_aio
+    restart: unless-stopped
+    ports:
+      - "5053:80"      # WordPress  -> proxy this in Nginx Proxy Manager
+      - "5054:5054"    # MariaDB     (5054, NOT 3306, so no Webuzo collision)
+    environment:
+      # --- DB bootstrap (used by the entrypoint to create the DB + user) ---
+      DB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      # --- WordPress connects to the in-container DB over localhost:5054 ---
+      WORDPRESS_DB_HOST: 127.0.0.1:5054
+      WORDPRESS_DB_USER: ${DB_USER}
+      WORDPRESS_DB_PASSWORD: ${DB_PASSWORD}
+      WORDPRESS_DB_NAME: ${DB_NAME}
+      # MUST match $table_prefix from the old wp-config.php (often NOT plain wp_)
+      WORDPRESS_TABLE_PREFIX: ${TABLE_PREFIX}
+      WORDPRESS_CONFIG_EXTRA: |
+        define('WP_HOME', '${SITE_URL}');
+        define('WP_SITEURL', '${SITE_URL}');
+    volumes:
+      - db_data:/var/lib/mysql                          # persistent database
+      - ./backup/wp-content:/var/www/html/wp-content    # themes/plugins/uploads
+      - ./backup:/backup:ro                             # entrypoint reads /backup/database.sql
+    healthcheck:
+      # Healthy once Apache serves the login page (DB up + WordPress responding).
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1/wp-login.php"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s        # allow time for build/import on first boot
+
+volumes:
+  db_data:
